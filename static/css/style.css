@@ -1,0 +1,20 @@
+body{
+    background-color: rgb(46, 46, 46);
+    color: white;
+    font-family: Arial, Helvetica, sans-serif
+}
+
+#input-msg{
+    width: 500px;
+    padding: 10px;
+    margin-right: 10px;
+    border-radius: 20px;
+    border: none;
+}
+
+#send-btn{
+    padding: 10px 20px;
+    border-radius: 10px;
+    border: none;
+
+}
