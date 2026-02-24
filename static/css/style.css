@@ -1,20 +1,135 @@
-body{
-    background-color: rgb(46, 46, 46);
+* {
+    margin: 0;
+    padding: 0;
+    box-sizing: border-box;
+    font-family: "Segoe UI", system-ui, sans-serif;
+}
+
+body {
+    height: 100vh;
+    background: #1e1f22;
+    color: #e4e6eb;
+}
+
+/* Layout */
+.app {
+    display: flex;
+    height: 100vh;
+}
+
+/* Sidebar */
+.sidebar {
+    width: 260px;
+    background: #2b2d31;
+    padding: 20px;
+    border-right: 1px solid #3a3c43;
+}
+
+.sidebar h2 {
+    margin-bottom: 20px;
+}
+
+.user-info {
+    font-size: 14px;
+    margin-bottom: 10px;
+}
+
+.status {
+    font-size: 13px;
+    color: #b5bac1;
+}
+
+.dot {
+    height: 10px;
+    width: 10px;
+    background: #23a559;
+    border-radius: 50%;
+    display: inline-block;
+    margin-right: 6px;
+}
+
+/* Chat area */
+.chat-container {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+}
+
+/* Header */
+.chat-header {
+    padding: 15px 20px;
+    background: #313338;
+    border-bottom: 1px solid #3a3c43;
+}
+
+/* Messages */
+.chat-messages {
+    flex: 1;
+    overflow-y: auto;
+    list-style: none;
+    padding: 20px;
+}
+
+/* Message bubble */
+.message {
+    margin-bottom: 12px;
+    max-width: 60%;
+    padding: 10px 14px;
+    border-radius: 12px;
+    line-height: 1.4;
+    font-size: 14px;
+}
+
+/* Received */
+.message.other {
+    background: #383a40;
+}
+
+/* Sent */
+.message.me {
+    background: #5865f2;
+    margin-left: auto;
+}
+
+/* Input */
+.chat-input {
+    display: flex;
+    padding: 15px;
+    background: #313338;
+    border-top: 1px solid #3a3c43;
+}
+
+.chat-input input {
+    flex: 1;
+    padding: 12px;
+    border-radius: 8px;
+    border: none;
+    outline: none;
+    background: #1e1f22;
     color: white;
-    font-family: Arial, Helvetica, sans-serif
 }
 
-#input-msg{
-    width: 500px;
-    padding: 10px;
-    margin-right: 10px;
-    border-radius: 20px;
+.chat-input button {
+    margin-left: 10px;
+    padding: 12px 18px;
     border: none;
+    border-radius: 8px;
+    background: #5865f2;
+    color: white;
+    cursor: pointer;
+    transition: 0.2s;
 }
 
-#send-btn{
-    padding: 10px 20px;
+.chat-input button:hover {
+    background: #4752c4;
+}
+
+/* Scrollbar clean */
+::-webkit-scrollbar {
+    width: 6px;
+}
+
+::-webkit-scrollbar-thumb {
+    background: #3a3c43;
     border-radius: 10px;
-    border: none;
-
 }

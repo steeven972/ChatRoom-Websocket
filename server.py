@@ -1,135 +1,126 @@
-from fastapi import FastAPI
+from unittest import case
+
+from fastapi import FastAPI, Request
 from fastapi.websockets import WebSocket, WebSocketDisconnect
 from fastapi.responses import HTMLResponse
 from fastapi.staticfiles import StaticFiles
+import time
+from services.connectionManager import ConnectionManager
+from services.security import hash_password
+from fastapi import Form
+from fastapi.responses import RedirectResponse
+from fastapi import status
 
-class ConnectionManager:
-    def __init__(self):
-        self.active_connections: dict[str, WebSocket] = {}
 
-    async def connection(self, websocket: WebSocket, client_id: str):
-        await websocket.accept()
-        self.active_connections[client_id] = {
-            "websocket": websocket,
-        }
-        new_client = ClientAccount(client_id, None)
-        new_client.set_status("online")
-        self.active_connections[client_id]["account"] = new_client
-        print(f"Client connected: {self.active_connections[client_id]['account'].show_info()}")
+from models.user import ClientAccount
+class Server:
+    def __init__(self, manager: ConnectionManager, app: FastAPI= FastAPI()):
+        self.manager = manager
+        self.app = app
+        self.app.mount("/static", StaticFiles(directory="static"), name="static")
+
+    def run(self):
+        self.setup_routes()
+        import uvicorn
+        uvicorn.run(self.app, host="0.0.0.0", port=8000)
+    
+    
+    def setup_routes(self):
+        @self.app.get("/register")
+        async def get_register():
+            with open("./templates/register.html", "r") as f:
+                html_content = f.read()
+            return HTMLResponse(content=html_content, status_code=200)
         
-    def disconnect(self, websocket: WebSocket, client_id: str):
-        self.active_connections.pop(client_id, None)
-        print(f"Client disconnected: {client_id}")
+        @self.app.post("/register")
+        async def post_register(username: str = Form(...), password: str = Form(...)):
+            print(f"Registered new user: {username}")
 
-    async def send_personal_message(self, message: str, websocket: WebSocket):
-        await websocket.send_text(message)
-
-    async def broadcast(self, message:str):
-        for conn in self.active_connections:
-            await self.active_connections[conn]["websocket"].send_text(message)
-
-    async def private_message(self, message:str, username:str):
-        await self.active_connections[username]["websocket"].send_text(message)
-    
-    async def get_connection_count(self):
-        return len(self.active_connections)
-    
-class ClientAccount:
-    def __init__(self, username, password):
-        self.username = username
-        self.password = password
-        self.status = "offline"
-        self.friends = set()
-        self.permissions = set()
-    
-    def add_friend(self, friend_username):
-        self.friends.add(friend_username)
-    
-    def remove_friend(self, friend_username):
-        self.friends.discard(friend_username)
-    
-    def add_permission(self, permission):
-        self.permissions.add(permission)
-
-    def remove_permission(self, permission):
-        self.permissions.discard(permission)
-    
-    def set_status(self, status):
-        self.status = status
-
-    def show_info(self):
-        return {
-            "username": self.username,
-            "status": self.status,
-            "friends": list(self.friends),
-            "permissions": list(self.permissions)
-        }
+            if username in self.manager.active_connections:
+                return HTMLResponse("<h3>Username already taken</h3>", status_code=400)
 
 
-manager = ConnectionManager()
+            response = RedirectResponse(url="/", status_code=status.HTTP_303_SEE_OTHER)
 
-app = FastAPI()
+            # on stocke la session
+            response.set_cookie(
+                key="username",
+                value=username,
+                httponly=True,  # important (sécurité)
+                samesite="lax",
+                path="/"
+            )
 
-app.mount("/static", StaticFiles(directory="static"), name="static")
+            return response
+        @self.app.get("/")
+        async def get(request: Request):
+            username = request.cookies.get("username")
 
-@app.get("/")
-async def get():
-    with open("./templates/client.html", "r") as f:
-        html_content = f.read()
-    return HTMLResponse(content=html_content, status_code=200)
+            with open("./templates/client.html", "r") as f:
+                html_content = f.read()
 
-@app.get("/login")
-async def get_login():
-    with open("./templates/connection.html", "r") as f:
-        html_content = f.read()
-    return HTMLResponse(content=html_content, status_code=200)
+            # injecter le username dans la page
+            html_content = html_content.replace("{{username}}", username if username else "")
 
-@app.get("/client_count")
-async def get_client_count():
-    return {"count": await manager.get_connection_count()}
+            return HTMLResponse(content=html_content, status_code=200)
+        
+        @self.app.get("/client_count")
+        async def get_client_count():
+            return {"count": await self.manager.get_connection_count()}
 
 
-@app.websocket("/ws/{client_id}")
-async def websocket_endpoint(ws: WebSocket, client_id: str, password: str = None):
-    await manager.connection(ws, client_id)
-    await manager.broadcast(f"Client {client_id} joined the chat")
-    try:
-        while True:
-            data = await ws.receive_text()
-            #await manager.send_personal_message(f"You wrote: {data}", ws)
-            if data.startswith("@"):
-                target, msg = data[1:].split(" ", 1)
-                if target in manager.active_connections:
-                    await manager.private_message(f"Private from @{client_id}: {msg}", target)
-                    await manager.send_personal_message(f"Private to @{target}: {msg}", ws)
-                else:
-                    await manager.send_personal_message(f"User @{target} not found.", ws)
-            elif data.startswith("/help"):
-                help_msg = "Commands:\n"
-                help_msg += "@username message - Send private message\n |"
-                help_msg += "/help - Show this help message\n |"
-                help_msg += "/add_friend @username - Add a friend\n |"
-                help_msg += "/show_friends - Show your friends list\n |"
-                help_msg += "/show_info - Show your account info\n |"
-                await manager.send_personal_message(help_msg, ws)
-            elif data.startswith("/add_friend @"):
-                friend_username = data.split("@", 1)[1].strip()
-                manager.active_connections[client_id]["account"].add_friend(friend_username)
-                await manager.send_personal_message(f"Added @{friend_username} as a friend.", ws)
-            elif data.startswith("/show_friends"):
-                friends = manager.active_connections[client_id]["account"].friends
-                await manager.send_personal_message(f"your friends: {','.join(friends)}", ws)
-            elif data.startswith("/show_info"):
-                info = manager.active_connections[client_id]["account"].show_info()
-                await manager.send_personal_message(f"Your account info: {info}", ws)
-            elif data.startswith("/"):
-                await manager.send_personal_message("Unknown command. Type /help for a list of commands.", ws)
-            else:
-                await manager.broadcast(f"@{client_id}: {data}")
-    except WebSocketDisconnect:
-        manager.disconnect(ws, client_id)
-        await manager.broadcast(f"Client {client_id} left the chat")
-    
+        @self.app.websocket("/ws")
+        async def websocket_endpoint(ws: WebSocket):
+            print("Cookies reçus:", ws.cookies)
+            cookie_username = ws.cookies.get("username")
+
+            if not cookie_username:
+                await ws.close(code=1008, reason="Username cookie is required")
+                return
+                
+                
+            
+            await self.manager.connection(ws, cookie_username)
+            await self.manager.broadcast(f"Client {cookie_username} joined the chat")
+            try:
+                while True:
+                    data = await ws.receive_text()
+                    #await manager.send_personal_message(f"You wrote: {data}", ws)
+
+                    match data:
+                        case _ if data.startswith("@"):
+                            target, msg = data[1:].split(" ", 1)
+                            if target in self.manager.active_connections:
+                                await self.manager.private_message(f"Private from @{cookie_username}: {msg}", target)
+                                await self.manager.send_personal_message(f"Private to @{target}: {msg}", ws)
+                            else:
+                                await self.manager.send_personal_message(f"User @{target} not found.", ws)
+                        case _ if data.startswith("/help"):
+                            help_msg = "\n".join(self.manager.get_command_list())
+                            await self.manager.send_personal_message(help_msg, ws)
+
+                        case _ if data.startswith("/add_friend @"):
+                            friend_username = data.split("@", 1)[1].strip()
+                            self.manager.active_connections[cookie_username]["account"].add_friend(friend_username)
+                            await self.manager.send_personal_message(f"Added @{friend_username} as a friend.", ws)
+                        case _ if data.startswith("/show_friends"):
+                            friends = self.manager.active_connections[cookie_username]["account"].friends
+                            await self.manager.send_personal_message(f"your friends: {','.join(friends)}", ws)
+                        case _ if data.startswith("/show_info"):
+                            info = self.manager.active_connections[cookie_username]["account"].show_info()
+                            await self.manager.send_personal_message(f"Your account info: {info}", ws)
+                        case _ if data.startswith("/"):
+                            await self.manager.send_personal_message("Unknown command. Type /help for a list of commands.", ws)
+                        case _:
+                            await self.manager.broadcast(f"@{cookie_username}: {data}")
+                
+            except WebSocketDisconnect:
+                await self.manager.broadcast(f"Client {cookie_username} left the chat")
+                self.manager.disconnect(cookie_username, ws)
+                await self.manager.broadcast(f"{cookie_username} left the chat")
+        return self.app  
+
 if __name__ == "__main__":
-    import uvicorn
-    uvicorn.run(app, host="localhost", port=8000)
+    manager = ConnectionManager()
+    server = Server(manager)
+    server.run()

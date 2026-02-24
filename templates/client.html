@@ -1,24 +1,53 @@
 <!DOCTYPE html>
-<html>
-    <head>
-        <meta charset="UTF-8">
-        <title>WebSocket Chat</title>
-        <link rel="stylesheet" href="../static/css/style.css">
-    </head>
-    <body>
-        <div>
-            <h1>WebSocket Chat</h1>
-            
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <title>WebSocket Chat</title>
+    <link rel="stylesheet" href="../static/css/style.css">
+</head>
+
+<body>
+<div class="app">
+
+    <!-- SIDEBAR -->
+    <aside class="sidebar">
+        <h2>ChatRoom</h2>
+        <div class="user-info">
+            Connected as:
+            <p><b id="username">{{username}}</b></p>
         </div>
-        
-      
-        <p>Your ID: <span id="ws-id"></span></p>
-        <input id="input-msg" placeholder="Message">
-        <button id="send-btn" onclick="send()">Envoyer</button>
 
-        <ul id="chat"></ul>
+        <div class="status">
+            <span class="dot"></span> online
+        </div>
+        <div class="friends">
+            <ul id="friends-list"></ul>
+        </div>
+    </aside>
 
-        
-    <script src="../static/js/chat.js"></script>
-    </body>
+    <!-- MAIN CHAT -->
+    <main class="chat-container">
+
+        <div class="chat-header">
+            <h3>General Room</h3>
+        </div>
+
+        <ul id="chat" class="chat-messages"></ul>
+
+        <div class="chat-input">
+            <input
+                type="text"
+                id="input-msg"
+                placeholder="Write a message..."
+                onkeypress="if(event.key === 'Enter') send()"
+            >
+            <button onclick="send()">Send</button>
+        </div>
+
+    </main>
+
+</div>
+
+<script src="../static/js/chat.js"></script>
+</body>
 </html>
