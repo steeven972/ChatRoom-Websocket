@@ -5,7 +5,7 @@ from fastapi.websockets import WebSocket, WebSocketDisconnect
 from fastapi.responses import HTMLResponse
 from fastapi.staticfiles import StaticFiles
 import time
-from services.connectionManager import ConnectionManager
+from services.connectionManager import ConnectionManager, NoCacheMiddleware
 from services.security import hash_password
 from fastapi import Form
 from fastapi.responses import RedirectResponse
@@ -22,6 +22,7 @@ class Server:
     def run(self):
         self.setup_routes()
         import uvicorn
+        self.app.add_middleware(NoCacheMiddleware)
         uvicorn.run(self.app, host="0.0.0.0", port=8000)
     
     
@@ -80,8 +81,10 @@ class Server:
                 
                 
             
-            await self.manager.connection(ws, cookie_username)
-            await self.manager.broadcast(f"Client {cookie_username} joined the chat")
+            first = await self.manager.connection(ws, cookie_username)
+
+            if first:
+                await self.manager.broadcast(f"Client {cookie_username} joined the chat")
             try:
                 while True:
                     data = await ws.receive_text()
@@ -120,6 +123,7 @@ class Server:
                 await self.manager.broadcast(f"{cookie_username} left the chat")
         return self.app  
 
+    
 if __name__ == "__main__":
     manager = ConnectionManager()
     server = Server(manager)

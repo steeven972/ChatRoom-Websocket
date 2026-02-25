@@ -5,14 +5,15 @@ from models.user import ClientAccount
 
 class ConnectionManager:
     def __init__(self):
-        self.active_connections: dict[str, WebSocket] = {}
+        self.active_connections: dict[str, dict] = {}
 
    
-    async def connection(self, websocket: WebSocket, client_id: str):
+    async def connection(self, websocket: WebSocket, client_id: str) -> bool:
         await websocket.accept()
 
+        first_connection = False
+
         if client_id not in self.active_connections:
-            # première connexion
             account = ClientAccount(client_id, None)
             account.set_status("online")
 
@@ -21,28 +22,33 @@ class ConnectionManager:
                 "sockets": []
             }
 
+            first_connection = True
             print(f"{client_id} connected (first session)")
 
-        # ajouter UNE session
         self.active_connections[client_id]["sockets"].append(websocket)
 
-        print(f"{client_id} opened a new socket. Total: {len(self.active_connections[client_id]['sockets'])}")   
-    def disconnect(self, client_id: str, websocket: WebSocket):
+        print(f"{client_id} opened socket ({len(self.active_connections[client_id]['sockets'])})")
+
+        return first_connection   
+    def disconnect(self, client_id: str, websocket: WebSocket) -> bool:
         if client_id not in self.active_connections:
-            return
+            return False
 
         sockets = self.active_connections[client_id]["sockets"]
 
         if websocket in sockets:
             sockets.remove(websocket)
 
-        print(f"{client_id} closed a socket. Remaining: {len(sockets)}")
+        print(f"{client_id} closed socket ({len(sockets)} remaining)")
 
         if not sockets:
-            # plus aucune session → OFFLINE
             self.active_connections[client_id]["account"].set_status("offline")
             del self.active_connections[client_id]
-            print(f"{client_id} fully disconnected at {time.strftime('%H:%M')}")
+            print(f"{client_id} fully disconnected")
+
+            return True  # dernière session fermée
+
+        return False
               
     async def send_personal_message(self, message: str, websocket: WebSocket):
         time_stramp = time.strftime("%H:%M")
@@ -81,4 +87,14 @@ class ConnectionManager:
             "/show_friends - Show your friends list",
             "/show_info - Show your account info"
         ]
-    
+
+
+from fastapi import FastAPI
+from starlette.middleware.base import BaseHTTPMiddleware
+
+class NoCacheMiddleware(BaseHTTPMiddleware):
+    async def dispatch(self, request, call_next):
+        response = await call_next(request)
+        response.headers["Cache-Control"] = "no-store"
+        return response
+

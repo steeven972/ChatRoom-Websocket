@@ -53,6 +53,7 @@ body {
     flex: 1;
     display: flex;
     flex-direction: column;
+    
 }
 
 /* Header */
@@ -132,4 +133,92 @@ body {
 ::-webkit-scrollbar-thumb {
     background: #3a3c43;
     border-radius: 10px;
+}
+
+/* ========================= */
+/* RESPONSIVE */
+/* ========================= */
+
+/* Tablette */
+@media (max-width: 1024px) {
+    .sidebar {
+        width: 220px;
+        padding: 15px;
+    }
+
+    .message {
+        max-width: 75%;
+    }
+}
+
+/* Mobile */
+@media (max-width: 768px) {
+
+    .app {
+        flex-direction: column;
+        height: 100vh;
+    }
+
+    .sidebar {
+        width: 100%;
+        border-right: none;
+        border-bottom: 1px solid #3a3c43;
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        padding: 15px;
+    }
+
+    .chat-container {
+        flex: 1;
+    }
+
+    .chat-messages {
+        padding: 15px;
+    }
+
+    .message {
+        max-width: 85%;
+        font-size: 13px;
+    }
+
+    .chat-input {
+        padding: 10px;
+    }
+
+    .chat-input input {
+        padding: 10px;
+        font-size: 14px;
+    }
+
+    .chat-input button {
+        padding: 10px 14px;
+        font-size: 14px;
+    }
+}
+
+/* Petit mobile */
+@media (max-width: 480px) {
+
+    .sidebar h2 {
+        font-size: 16px;
+    }
+
+    .user-info,
+    .status {
+        font-size: 12px;
+    }
+
+    .message {
+        max-width: 90%;
+        font-size: 12px;
+    }
+
+    .chat-input input {
+        font-size: 13px;
+    }
+
+    .chat-input button {
+        font-size: 13px;
+    }
 }
